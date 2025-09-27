@@ -125,11 +125,26 @@ import StartWritingButton from "./components/StartWritingButton"; // new button 
 
 async function getPosts() {
   const supabase = createServerComponentClient({ cookies });
+const { data, error } = await supabase
+  .from("posts")
+  .select(`
+    id,
+    title,
+    content,
+    media,
+    created_at,
+    author_id,
+    profiles!posts_author_id_fkey (
+      id,
+      username,
+      name,
+      age,
+      gender,
+      location
+    )
+  `)
+  .order("created_at", { ascending: false });
 
-  const { data, error } = await supabase
-    .from("posts")
-    .select("id, title, content, media, created_at, author_id, profiles(username)")
-    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching posts:", error);

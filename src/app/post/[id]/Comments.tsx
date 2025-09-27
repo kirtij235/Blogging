@@ -44,7 +44,6 @@ export default function Comments({ postId }: { postId: string }) {
 
   return (
     <section className="mt-10">
-      <h3 className="text-lg font-semibold mb-3">Comments</h3>
       <div className="space-y-3">
         {comments.map((c) => (
           <div key={c.id} className="p-3 bg-white border rounded">
