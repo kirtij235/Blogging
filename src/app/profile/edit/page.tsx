@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +8,12 @@ import { useRouter } from "next/navigation";
 export default function EditProfilePage() {
   const [user, setUser] = useState<any | null>(null);
   const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState<number | undefined>();
+  const [gender, setGender] = useState("");
+  const [location, setLocation] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,27 +35,100 @@ export default function EditProfilePage() {
       // Load profile data
       const { data: profile } = await supabase
         .from("profiles")
-        .select("username")
+        .select("username, name, age, gender, location, avatar_url")
         .eq("id", user.id)
         .single();
 
       if (profile) {
         setUsername(profile.username || "");
+        setName(profile.name || "");
+        setAge(profile.age || undefined);
+        setGender(profile.gender || "");
+        setLocation(profile.location || "");
+        setAvatarUrl(profile.avatar_url || "");
       }
     };
 
     getUser();
   }, [router]);
 
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      setUploading(true);
+
+      if (!e.target.files || e.target.files.length === 0) {
+        throw new Error("Please select an image to upload.");
+      }
+
+      const file = e.target.files[0];
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+
+      // Upload image
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      // Update profile avatar_url
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (dbError) throw dbError;
+
+      setAvatarUrl(publicUrl);
+      setMessage("✅ Avatar updated successfully!");
+    } catch (err: any) {
+      console.error("Upload error:", err.message);
+      setMessage("❌ Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeleteAvatar() {
+    try {
+      if (!avatarUrl) return;
+
+      // Extract file name from URL
+      const parts = avatarUrl.split("/");
+      const fileName = parts[parts.length - 1];
+
+      // Remove from storage
+      await supabase.storage.from("avatars").remove([fileName]);
+
+      // Remove from DB
+      await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
+
+      setAvatarUrl("");
+      setMessage("✅ Avatar deleted successfully!");
+    } catch (err: any) {
+      console.error("Delete error:", err.message);
+      setMessage("❌ Delete failed");
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
-    // 1) Update username only
+    // ✅ Update profile data
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: user.id,
       username,
+      name,
+      age,
+      gender,
+      location,
+      avatar_url: avatarUrl,
     });
 
     if (profileError) {
@@ -57,7 +137,7 @@ export default function EditProfilePage() {
       return;
     }
 
-    // 2) Handle password update only if fields are filled
+    // ✅ Password update (optional)
     if (currentPassword && newPassword && confirmPassword) {
       if (newPassword !== confirmPassword) {
         setMessage("❌ New passwords do not match");
@@ -99,6 +179,37 @@ export default function EditProfilePage() {
         <h1 className="text-2xl font-bold mb-4">Edit Profile</h1>
 
         <form onSubmit={handleSave} className="space-y-4">
+          {/* Avatar Upload */}
+          <div>
+            <label className="block text-sm font-medium">Avatar</label>
+            <div className="flex items-center gap-4">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-200" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleUpload}
+                disabled={uploading}
+              />
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAvatar}
+                  className="text-red-600 text-sm"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Username */}
           <div>
             <label className="block text-sm font-medium">Username</label>
@@ -110,7 +221,53 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Current password */}
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium">Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border p-2 rounded"
+            />
+          </div>
+
+          {/* Age */}
+          <div>
+            <label className="block text-sm font-medium">Age</label>
+            <input
+              type="number"
+              value={age ?? ""}
+              onChange={(e) => setAge(Number(e.target.value))}
+              className="w-full border p-2 rounded"
+            />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium">Gender</label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full border p-2 rounded"
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium">Location</label>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full border p-2 rounded"
+            />
+          </div>
+
+          {/* Passwords */}
           <div>
             <label className="block text-sm font-medium">Current Password</label>
             <input
@@ -122,7 +279,6 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* New password */}
           <div>
             <label className="block text-sm font-medium">New Password</label>
             <input
@@ -133,7 +289,6 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Confirm new password */}
           <div>
             <label className="block text-sm font-medium">Confirm New Password</label>
             <input

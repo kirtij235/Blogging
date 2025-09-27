@@ -14,6 +14,7 @@ export default function NavbarClient() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
+      console.log("Session on mount:", data.session);
       setUser(data.session?.user ?? null);
     });
 
