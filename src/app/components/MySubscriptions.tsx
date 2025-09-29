@@ -1,153 +1,311 @@
+
+
+// // FILE: app/components/MySubscriptions.tsx
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { supabase } from "@/lib/supabaseClient";
+// import Link from "next/link";
+// import FollowButton from "./FollowButton";
+
+// export default function MySubscriptions({ ownerId }: { ownerId?: string }) {
+//   const [loading, setLoading] = useState(false);
+//   const [followers, setFollowers] = useState<any[]>([]);
+//   const [following, setFollowing] = useState<any[]>([]);
+//   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+
+//   useEffect(() => {
+//     async function fetchData() {
+//       setLoading(true);
+
+//       // If ownerId not provided, fall back to current logged-in user
+//       let targetId = ownerId;
+//       const {
+//         data: { user },
+//       } = await supabase.auth.getUser();
+//       if (!targetId) {
+//         if (!user) {
+//           setFollowers([]);
+//           setFollowing([]);
+//           setLoading(false);
+//           return;
+//         }
+//         targetId = user.id;
+//       }
+//       setSessionUserId(user?.id ?? null);
+
+//       // Followers (who follow target)
+//       const { data: followersData } = await supabase
+//         .from("follows")
+//         .select("follower_id, profiles:follower_id(username, avatar_url, id)")
+//         .eq("following_id", targetId);
+
+//       // Following (who target follows)
+//       const { data: followingData } = await supabase
+//         .from("follows")
+//         .select("following_id, profiles:following_id(username, avatar_url, id)")
+//         .eq("follower_id", targetId);
+
+//       setFollowers(followersData?.map((f) => f.profiles).filter(Boolean) ?? []);
+//       setFollowing(followingData?.map((f) => f.profiles).filter(Boolean) ?? []);
+//       setLoading(false);
+//     }
+
+//     fetchData();
+//   }, [ownerId]);
+
+//   if (loading) return <p className="p-6">Loading subscriptions...</p>;
+
+//   return (
+//     <div>
+//       <h3 className="font-semibold mb-4 text-gray-800 text-lg">
+//         Followers & Following
+//       </h3>
+
+//       <div className="overflow-x-auto border rounded-lg">
+//         <table className="w-full text-sm border-collapse">
+//           <thead className="bg-gray-100 text-gray-700">
+//             <tr>
+//               <th className="px-4 py-2 w-1/2">Following</th>
+//               <th className="px-4 py-2 w-1/2">Followers</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             <tr className="align-top">
+//               {/* Following column */}
+//               <td className="px-4 py-3 border-r">
+//                 {following.length === 0 ? (
+//                   <p className="text-gray-500 text-sm">Not following anyone.</p>
+//                 ) : (
+//                   <ul className="space-y-3">
+//                     {following.map((user) => (
+//                       <li
+//                         key={user.id}
+//                         className="flex items-center gap-3 bg-gray-50 p-2 rounded"
+//                       >
+//                         {user.avatar_url ? (
+//                           <img
+//                             src={user.avatar_url}
+//                             alt={user.username}
+//                             className="w-8 h-8 rounded-full object-cover"
+//                           />
+//                         ) : (
+//                           <div className="w-8 h-8 rounded-full bg-gray-200" />
+//                         )}
+//                         <Link
+//                           href={`/author/${user.username}`}
+//                           className="text-blue-600 hover:underline font-medium"
+//                         >
+//                           {user.username}
+//                         </Link>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 )}
+//               </td>
+
+//               {/* Followers column */}
+//               <td className="px-4 py-3">
+//                 {followers.length === 0 ? (
+//                   <p className="text-gray-500 text-sm">No followers yet.</p>
+//                 ) : (
+//                   <ul className="space-y-3">
+//                     {followers.map((user) => (
+//                       <li
+//                         key={user.id}
+//                         className="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded"
+//                       >
+//                         <div className="flex items-center gap-3">
+//                           {user.avatar_url ? (
+//                             <img
+//                               src={user.avatar_url}
+//                               alt={user.username}
+//                               className="w-8 h-8 rounded-full object-cover"
+//                             />
+//                           ) : (
+//                             <div className="w-8 h-8 rounded-full bg-gray-200" />
+//                           )}
+//                           <Link
+//                             href={`/author/${user.username}`}
+//                             className="text-blue-600 hover:underline font-medium"
+//                           >
+//                             {user.username}
+//                           </Link>
+//                         </div>
+
+//                         {/* Follow Back button */}
+//                         {sessionUserId && sessionUserId !== user.id && (
+//                           <FollowButton authorId={user.id} />
+//                         )}
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 )}
+//               </td>
+//             </tr>
+//           </tbody>
+//         </table>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
+import FollowButton from "./FollowButton";
 
-export default function MySubscriptionsButton() {
-  const [open, setOpen] = useState(false);
+export default function MySubscriptions({ ownerId }: { ownerId?: string }) {
+  const [loading, setLoading] = useState(false);
   const [followers, setFollowers] = useState<any[]>([]);
   const [following, setFollowing] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-
-    const fetchData = async () => {
+    async function fetchData() {
       setLoading(true);
 
+      // If ownerId not provided, fall back to current logged-in user
+      let targetId = ownerId;
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
+      if (!targetId) {
+        if (!user) {
+          setFollowers([]);
+          setFollowing([]);
+          setLoading(false);
+          return;
+        }
+        targetId = user.id;
       }
+      setSessionUserId(user?.id ?? null);
 
-      // Followers (who follows me)
+      // Followers (who follow target)
       const { data: followersData } = await supabase
         .from("follows")
         .select("follower_id, profiles:follower_id(username, avatar_url, id)")
-        .eq("following_id", user.id);
+        .eq("following_id", targetId);
 
-      setFollowers(followersData?.map((f) => f.profiles).filter(Boolean) ?? []);
-
-      // Following (who I follow)
+      // Following (who target follows)
       const { data: followingData } = await supabase
         .from("follows")
         .select("following_id, profiles:following_id(username, avatar_url, id)")
-        .eq("follower_id", user.id);
+        .eq("follower_id", targetId);
 
+      setFollowers(followersData?.map((f) => f.profiles).filter(Boolean) ?? []);
       setFollowing(followingData?.map((f) => f.profiles).filter(Boolean) ?? []);
-
       setLoading(false);
-    };
+    }
 
     fetchData();
-  }, [open]);
+  }, [ownerId]);
+
+  if (loading) return <p className="p-6">Loading subscriptions...</p>;
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-      >
-        My Subscriptions
-      </button>
+    <div>
+      <h3 className="font-semibold mb-4 text-gray-800 text-lg">
+        Followers & Following
+      </h3>
 
-      {open && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative">
-            {/* Close button */}
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
-
-            <h2 className="text-lg font-bold mb-4 text-gray-800">
-              My Subscriptions
-            </h2>
-
-            {loading ? (
-              <p className="text-gray-500">Loading...</p>
-            ) : (
-              <div className="space-y-6">
-                {/* Following */}
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-700">Following</h3>
-                  {following.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      You are not following anyone.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {following.map((user) => (
-                        <li
-                          key={user.id}
-                          className="flex items-center gap-2 bg-gray-50 p-2 rounded"
-                        >
+      <div className="overflow-x-auto border rounded-lg">
+        <table className="w-full text-sm border-collapse">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="px-4 py-2 w-1/2">Following</th>
+              <th className="px-4 py-2 w-1/2">Followers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="align-top">
+              {/* Following column */}
+              <td className="px-4 py-3 border-r">
+                {following.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Not following anyone.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {following.map((user) => (
+                      <li
+                        key={user.id}
+                        className="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded"
+                      >
+                        <div className="flex items-center gap-3">
                           {user.avatar_url ? (
                             <img
                               src={user.avatar_url}
                               alt={user.username}
-                              className="w-6 h-6 rounded-full object-cover"
+                              className="w-8 h-8 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-gray-200" />
+                            <div className="w-8 h-8 rounded-full bg-gray-200" />
                           )}
                           <Link
                             href={`/author/${user.username}`}
-                            className="text-blue-600 hover:underline"
+                            className="text-blue-600 hover:underline font-medium"
                           >
                             {user.username}
                           </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                        </div>
 
-                {/* Followers */}
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-700">Followers</h3>
-                  {followers.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      No one is following you yet.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {followers.map((user) => (
-                        <li
-                          key={user.id}
-                          className="flex items-center gap-2 bg-gray-50 p-2 rounded"
-                        >
+                        {/* ✅ Unfollow button (toggle) */}
+                        {sessionUserId && sessionUserId !== user.id && (
+                          <FollowButton authorId={user.id} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+
+              {/* Followers column */}
+              <td className="px-4 py-3">
+                {followers.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No followers yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {followers.map((user) => (
+                      <li
+                        key={user.id}
+                        className="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded"
+                      >
+                        <div className="flex items-center gap-3">
                           {user.avatar_url ? (
                             <img
                               src={user.avatar_url}
                               alt={user.username}
-                              className="w-6 h-6 rounded-full object-cover"
+                              className="w-8 h-8 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-gray-200" />
+                            <div className="w-8 h-8 rounded-full bg-gray-200" />
                           )}
                           <Link
                             href={`/author/${user.username}`}
-                            className="text-blue-600 hover:underline"
+                            className="text-blue-600 hover:underline font-medium"
                           >
                             {user.username}
                           </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </>
+                        </div>
+
+                        {/* ✅ Follow back button */}
+                        {sessionUserId && sessionUserId !== user.id && (
+                          <FollowButton authorId={user.id} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
+
+

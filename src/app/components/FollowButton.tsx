@@ -128,11 +128,11 @@ export default function FollowButton({ authorId }: FollowButtonProps) {
       disabled={loading}
       className={`ml-2 px-3 py-1 text-sm rounded transition-colors ${
         isFollowing
-          ? "bg-gray-300 text-gray-700 hover:bg-gray-400"
+          ? "bg-blue-300 text-black-700 hover:bg-blue-400"
           : "bg-blue-600 text-white hover:bg-blue-700"
       }`}
     >
-      {isFollowing ? "Following" : "Follow"}
+      {isFollowing ? "Unfollow" : "Follow"}
     </button>
   );
 }
